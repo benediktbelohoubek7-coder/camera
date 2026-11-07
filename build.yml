@@ -2,13 +2,7 @@ name: build
 on:
   push:
     branches: [main]
-  release:
-    types: [published]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag
-        default: "1.0"
 permissions:
   contents: write
 jobs:
@@ -21,17 +15,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with: { gradle-version: 8.7 }
       - run: unzip HyperCam.zip
-      - run: gradle assembleDebug
+      - run: gradle assembleRelease
         working-directory: HyperCam
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: HyperCam/app/build/outputs/apk/debug/app-debug.apk
-      - name: Attach to release
-        if: github.event_name != 'push'
+      - name: Publish APK to Releases
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
-          cp HyperCam/app/build/outputs/apk/debug/app-debug.apk HyperCam.apk
-          gh release upload "$TAG" HyperCam.apk --clobber
+          cp HyperCam/app/build/outputs/apk/release/app-release.apk HyperCam.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest HyperCam.apk --title "HyperCam (latest)" --notes "Release APK" --target ${{ github.sha }}
